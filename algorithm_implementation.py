@@ -43,32 +43,31 @@ class LogRegCCD:
         self.coef_ = np.zeros(n_features)
         self.intercept_ = 0
 
-        for _ in range(self.max_iter):
-            prev_coef = self.coef_.copy()
-
+        for iteration in range(self.max_iter):
+            next_coefs = self.coef_.copy()
             y_pred = self.predict_proba(X)
             residual = y - y_pred
 
-            W = y_pred * (1 - y_pred) # hessian terms will be approximated to determine step size more precisely
-            W[W == 0] = 1e-10  # for numerical stability reasons
+            W = np.clip(y_pred * (1 - y_pred), 1e-10, 1)
 
             for j in range(n_features):  # coordinate-wise update
                 gradient = np.dot(X[:, j], residual)
                 hessian_diag = np.sum(W * X[:, j] ** 2)
 
-                if hessian_diag > 0:
-                    self.coef_[j] = self.soft_thresholding(
+                if hessian_diag > 1e-10:
+                    next_coefs[j] = self.soft_thresholding(
                         self.coef_[j] + gradient / hessian_diag,
                         self.alpha / hessian_diag
                     )
 
+            self.coef_ = next_coefs
             self.intercept_ += np.mean(residual)
 
             # Compute loss
             loss = log_loss(y, self.predict_proba(X))
             self.loss_history.append(loss)
 
-            if np.linalg.norm(self.coef_ - prev_coef, ord=1) < self.tol:
+            if iteration > 0 and abs(self.loss_history[-1] - self.loss_history[-2]) < self.tol:
                 break
 
     def validate(self, X_valid, y_valid, measure):

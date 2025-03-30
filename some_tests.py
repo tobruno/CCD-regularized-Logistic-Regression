@@ -14,7 +14,7 @@ measures = [
 
 X_train, X_test, y_train, y_test = get_wine_data()
 alphas = 10 ** np.linspace(start=-8, stop=5, num=500)
-models = [LogRegCCD(alpha=alpha) for alpha in alphas]
+models = [LogRegCCD(alpha=alpha, tol=1e-5, max_iter=200) for alpha in alphas]
 
 for model in models:
     model.fit(X_train, y_train)
