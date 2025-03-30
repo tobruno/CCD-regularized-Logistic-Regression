@@ -95,15 +95,79 @@ def get_titanic_data():
     return X_train, X_test, y_train, y_test
 
 
-def get_synthetic_data():
-    X, y = make_classification(n_samples=1000, n_features=20, n_informative=15,
-                           n_redundant=5, n_classes=2, random_state=42)
-    column_names = [f"feature_{i}" for i in range(X.shape[1])]
-    df = pd.DataFrame(X, columns=column_names)
-    df["target"] = y
-
-    X_train, X_test, y_train, y_test = data_preprocessing(df)
-    return X_train, X_test, y_train, y_test
+def get_synthetic_data(n=1000, p=0.5, d=20, g=0.5, seed=42):
+    """
+    Generate synthetic data according to project specifications.
+    
+    Parameters:
+    -----------
+    n : int
+        Number of observations
+    p : float
+        Class prior probability (probability of Y=1)
+    d : int
+        Number of features
+    g : float
+        Covariance parameter where S[i,j] = g^|i-j|
+    seed : int
+        Random seed
+        
+    Returns:
+    --------
+    X_train, X_test, y_train, y_test
+    """
+    np.random.seed(seed)
+    
+    y = np.random.binomial(n=1, p=p, size=n)
+    
+    n_class_1 = np.sum(y)
+    n_class_0 = n - n_class_1
+    
+    covariance_matrix = np.zeros((d, d))
+    for i in range(d):
+        for j in range(d):
+            covariance_matrix[i, j] = g ** abs(i - j)
+    
+    X = np.zeros((n, d))
+    
+    mean_class_0 = np.zeros(d)
+    mean_class_1 = np.array([1/i if i > 0 else 1 for i in range(1, d+1)])
+    
+    X_class_0 = np.random.multivariate_normal(
+        mean=mean_class_0,
+        cov=covariance_matrix,
+        size=n_class_0
+    )
+    
+    X_class_1 = np.random.multivariate_normal(
+        mean=mean_class_1,
+        cov=covariance_matrix,
+        size=n_class_1
+    )
+    
+    X[y == 0] = X_class_0
+    X[y == 1] = X_class_1
+    
+    feature_names = [f'feature_{i+1}' for i in range(d)]
+    
+    df = pd.DataFrame(X, columns=feature_names)
+    df['target'] = y
+    
+    X_train, X_test, y_train, y_test = train_test_split(
+        df.drop(columns=['target']), 
+        df['target'], 
+        test_size=0.2, 
+        random_state=seed
+    )
+    
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    
+    X_train_final = pd.DataFrame(X_train_scaled, columns=X_train.columns)
+    X_test_final = pd.DataFrame(X_test_scaled, columns=X_test.columns)
+    
+    return X_train_final, X_test_final, y_train, y_test
 
 
 # QUICK TESTS
