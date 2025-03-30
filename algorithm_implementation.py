@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics import accuracy_score, log_loss, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, log_loss, precision_score, recall_score, f1_score, balanced_accuracy_score, roc_auc_score, average_precision_score
 from data_preparation import get_heart_data, get_cancer_data, get_synthetic_data, get_titanic_data, get_wine_data
 
 class LogRegCCD:
@@ -12,51 +12,91 @@ class LogRegCCD:
         self.coef_ = None  # Model coefficients
         self.intercept_ = 0  # Bias term
         self.loss_history = []
-    
-    def sigmoid(self, z):
-        return 1 / (1 + np.exp(-z))
-    
-    def fit(self, X, y):
-        X = X.to_numpy() if isinstance(X, pd.DataFrame) else X  # Convert DataFrame to NumPy array
-        y = y.to_numpy() if isinstance(y, pd.Series) else y
-        
-        n_samples, n_features = X.shape
-        self.coef_ = np.zeros(n_features)  # Initialize weights
-        self.intercept_ = 0
-        
-        for iteration in range(self.max_iter):
-            prev_coef = self.coef_.copy()
-            
-            for j in range(n_features):  # Coordinate-wise updates
-                z = X @ self.coef_ + self.intercept_
-                y_pred = self.sigmoid(z)
 
-                residual = y - y_pred
-                gradient = np.dot(X[:, j], residual)  # Now X[:, j] is valid
-            
-                # Soft-thresholding for L1 regularization
-                if gradient > self.alpha:
-                    self.coef_[j] = (gradient - self.alpha) / np.sum(X[:, j] ** 2)
-                elif gradient < -self.alpha:
-                    self.coef_[j] = (gradient + self.alpha) / np.sum(X[:, j] ** 2)
-                else:
-                    self.coef_[j] = 0
-            
+    def sigmoid(self, z):
+        z = np.clip(z, -25, 25)
+        return np.where(
+            z >= 0,
+            1 / (1 + np.exp(-z)),
+            np.exp(z) / (1 + np.exp(z))
+        )
+
+    def predict_proba(self, X):
+        return self.sigmoid(X @ self.coef_ + self.intercept_)
+
+    def predict(self, X):
+        return (self.predict_proba(X) >= 0.5).astype(int)
+
+    def soft_thresholding(self, a, b):
+        if a > b:
+            return a - b
+        elif a < -b:
+            return a + b
+        else:
+            return 0
+
+    def fit(self, X, y):
+        X = X.to_numpy() if isinstance(X, pd.DataFrame) else X
+        y = y.to_numpy() if isinstance(y, pd.Series) else y
+
+        n_samples, n_features = X.shape
+        self.coef_ = np.zeros(n_features)
+        self.intercept_ = 0
+
+        for _ in range(self.max_iter):
+            prev_coef = self.coef_.copy()
+
+            y_pred = self.predict_proba(X)
+            residual = y - y_pred
+
+            W = y_pred * (1 - y_pred) # hessian terms will be approximated to determine step size more precisely
+            W[W == 0] = 1e-10  # for numerical stability reasons
+
+            for j in range(n_features):  # coordinate-wise update
+                gradient = np.dot(X[:, j], residual)
+                hessian_diag = np.sum(W * X[:, j] ** 2)
+
+                if hessian_diag > 0:
+                    self.coef_[j] = self.soft_thresholding(
+                        self.coef_[j] + gradient / hessian_diag,
+                        self.alpha / hessian_diag
+                    )
+
             self.intercept_ += np.mean(residual)
-            
+
             # Compute loss
-            loss = log_loss(y, self.sigmoid(X @ self.coef_ + self.intercept_))
+            loss = log_loss(y, self.predict_proba(X))
             self.loss_history.append(loss)
-            
+
             if np.linalg.norm(self.coef_ - prev_coef, ord=1) < self.tol:
                 break
 
-    
-    def predict_proba(self, X):
-        return self.sigmoid(X @ self.coef_ + self.intercept_)
-    
-    def predict(self, X):
-        return (self.predict_proba(X) >= 0.5).astype(int)
+    def validate(self, X_valid, y_valid, measure):
+        measures = {
+            "recall": recall_score,
+            "precision": precision_score,
+            "F-measure": f1_score,
+            "balanced accuracy": balanced_accuracy_score,
+            "area under the ROC curve": roc_auc_score,
+            "area under the sensitivity-precision curve": average_precision_score
+        }
+
+        if measure not in measures:
+            raise ValueError(
+                "Enter either: recall, precision, F-measure, balanced accuracy, area under the ROC curve, or area under the sensitivity-precision curve.")
+
+        X_valid = X_valid.to_numpy() if isinstance(X_valid, pd.DataFrame) else X_valid
+        y_valid = y_valid.to_numpy() if isinstance(y_valid, pd.Series) else y_valid
+
+        y_scores = self.predict_proba(X_valid)
+        y_pred = (y_scores >= 0.5).astype(int)
+
+        if measure in ["area under the ROC curve", "area under the sensitivity-precision curve"]:
+            metric_input = y_scores # use scores if area under the curve metric
+        else:
+            metric_input = y_pred # use binary prediction otherwise
+
+        return measures[measure](y_valid, metric_input)
     
     def plot_loss(self):
         plt.plot(self.loss_history, label='Loss Convergence')
