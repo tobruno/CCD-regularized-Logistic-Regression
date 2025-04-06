@@ -180,13 +180,13 @@ def get_synthetic_data(n=1000, p=0.5, d=20, g=0.5, seed=42):
 # pred = lg.predict(X_test)
 # print(accuracy_score(y_test, pred))
 
-print('Heart')
-X_train, X_test, y_train, y_test = get_heart_data()
-lg = LogisticRegression()
-lg.fit(X_train, y_train)
+# print('Heart')
+# X_train, X_test, y_train, y_test = get_heart_data()
+# lg = LogisticRegression()
+# lg.fit(X_train, y_train)
 
-pred = lg.predict(X_test)
-print(accuracy_score(y_test, pred))
+# pred = lg.predict(X_test)
+# print(accuracy_score(y_test, pred))
 
 
 # print('Wine')

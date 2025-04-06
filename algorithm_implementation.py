@@ -36,38 +36,38 @@ class LogRegCCD:
             return 0
 
     def fit(self, X, y):
-        X = X.to_numpy() if isinstance(X, pd.DataFrame) else X
+        X = X.to_numpy() if isinstance(X, pd.DataFrame) else X  # Convert DataFrame to NumPy array
         y = y.to_numpy() if isinstance(y, pd.Series) else y
-
+        
         n_samples, n_features = X.shape
-        self.coef_ = np.zeros(n_features)
+        self.coef_ = np.zeros(n_features)  # Initialize weights
         self.intercept_ = 0
-
+        
         for iteration in range(self.max_iter):
-            next_coefs = self.coef_.copy()
-            y_pred = self.predict_proba(X)
-            residual = y - y_pred
+            prev_coef = self.coef_.copy()
+            
+            for j in range(n_features):  # Coordinate-wise updates
+                z = X @ self.coef_ + self.intercept_
+                y_pred = self.sigmoid(z)
 
-            W = np.clip(y_pred * (1 - y_pred), 1e-10, 1)
-
-            for j in range(n_features):  # coordinate-wise update
-                gradient = np.dot(X[:, j], residual)
-                hessian_diag = np.sum(W * X[:, j] ** 2)
-
-                if hessian_diag > 1e-10:
-                    next_coefs[j] = self.soft_thresholding(
-                        self.coef_[j] + gradient / hessian_diag,
-                        self.alpha / hessian_diag
-                    )
-
-            self.coef_ = next_coefs
+                residual = y - y_pred
+                gradient = np.dot(X[:, j], residual)  # Now X[:, j] is valid
+            
+                # Soft-thresholding for L1 regularization
+                if gradient > self.alpha:
+                    self.coef_[j] = (gradient - self.alpha) / np.sum(X[:, j] ** 2)
+                elif gradient < -self.alpha:
+                    self.coef_[j] = (gradient + self.alpha) / np.sum(X[:, j] ** 2)
+                else:
+                    self.coef_[j] = 0
+            
             self.intercept_ += np.mean(residual)
-
+            
             # Compute loss
-            loss = log_loss(y, self.predict_proba(X))
+            loss = log_loss(y, self.sigmoid(X @ self.coef_ + self.intercept_))
             self.loss_history.append(loss)
-
-            if iteration > 0 and abs(self.loss_history[-1] - self.loss_history[-2]) < self.tol:
+            
+            if np.linalg.norm(self.coef_ - prev_coef, ord=1) < self.tol:
                 break
 
     def validate(self, X_valid, y_valid, measure):
@@ -108,17 +108,18 @@ class LogRegCCD:
 
 datasets = {'wine': get_wine_data,'cancer':get_cancer_data, 'titanic':get_titanic_data, 'heart': get_heart_data, 'synthetic': get_synthetic_data}
 
-for dataset in datasets.values():
-    print(dataset)
-    X_train, X_test, y_train, y_test = dataset()
-    model = LogRegCCD(alpha=0.1, max_iter=100)
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    print("Accuracy:", accuracy_score(y_test, y_pred))
-    print("Precision:", precision_score(y_test, y_pred))
-    print("Recall:", recall_score(y_test, y_pred))
-    print("F1-score:", f1_score(y_test, y_pred))
-    model.plot_loss()
+# for dataset in datasets.values():
+#     print(dataset)
+#     X_train, X_test, y_train, y_test = dataset()
+#     model = LogRegCCD(alpha=0.1, max_iter=100)
+#     model.fit(X_train, y_train)
+#     y_pred = model.predict(X_test)
+#     print('Dataset:', dataset)
+#     print("Accuracy:", accuracy_score(y_test, y_pred))
+#     print("Precision:", precision_score(y_test, y_pred))
+#     print("Recall:", recall_score(y_test, y_pred))
+#     print("F1-score:", f1_score(y_test, y_pred))
+#     model.plot_loss()
 
 # Evaluation Metrics
 # print("Accuracy:", accuracy_score(y_test, y_pred))
