@@ -27,13 +27,12 @@ class LogRegCCD:
     def predict(self, X):
         return (self.predict_proba(X) >= 0.5).astype(int)
 
-    def soft_thresholding(self, a, b):
-        if a > b:
-            return a - b
-        elif a < -b:
-            return a + b
-        else:
-            return 0
+    def soft_thresholding(self, x, threshold):
+        if x > threshold:
+            return x - threshold
+        if x < -threshold:
+            return x + threshold
+        return 0
 
     def fit(self, X, y):
         X = X.to_numpy() if isinstance(X, pd.DataFrame) else X  # Convert DataFrame to NumPy array
@@ -105,8 +104,62 @@ class LogRegCCD:
         plt.legend()
         plt.show()
 
+class MultiLambdaLogRegCCD:
+    def __init__(self, start, stop, num, max_iter=100, tol=1e-4):
+        self.alphas = 10 ** np.linspace(start=start, stop=stop, num=num)
+        self.models = [LogRegCCD(alpha=alpha, tol=tol, max_iter=max_iter) for alpha in self.alphas]
 
-datasets = {'wine': get_wine_data,'cancer':get_cancer_data, 'titanic':get_titanic_data, 'heart': get_heart_data, 'synthetic': get_synthetic_data}
+    def fit(self, X, y):
+        for model in self.models:
+            model.fit(X, y)
+
+    def validate(self, X_valid, y_valid, measure):
+        return [model.validate(X_valid, y_valid, measure) for model in self.models]
+
+    def predict_proba(self, X):
+        return [model.predict_proba(X) for model in self.models]
+
+    def plot_coefficients(self):
+        coefs = [model.coef_ for model in self.models]
+        intercepts = [model.intercept_ for model in self.models]
+
+        plt.figure(figsize=(10, 6))
+        for i, coef in enumerate(zip(*coefs)):
+            plt.plot(self.alphas, coef, label=f'Coefficient {i + 1}')
+
+        plt.plot(self.alphas, intercepts, label='Intercept', linestyle='--', color='black')
+        plt.xscale('log')
+        plt.xlabel('Regularization strength')
+        plt.ylabel('Coefficient values')
+        plt.title('Regularization path')
+        plt.legend()
+        plt.grid()
+        plt.show()
+
+    def plot(self, measure, X, y):
+        measure_vals = self.validate(X, y, measure)
+
+        plt.figure(figsize=(10, 6))
+
+        plt.plot(self.alphas, measure_vals, color='black')
+        plt.xscale('log')
+        plt.xlabel('Regularization strength')
+        plt.title(f"{measure} vs regularization strength")
+        plt.grid()
+        plt.show()
+
+    def plot_final_loss(self):
+        losses = [model.loss_history[-1] for model in self.models]
+
+        plt.figure(figsize=(10, 6))
+        plt.plot(self.alphas, losses)
+        plt.xscale('log')
+        plt.xlabel('Regularization strength')
+        plt.title('Final loss vs regularization strength')
+        plt.grid()
+        plt.show()
+
+#datasets = {'wine': get_wine_data,'cancer':get_cancer_data, 'titanic':get_titanic_data, 'heart': get_heart_data, 'synthetic': get_synthetic_data}
 
 # for dataset in datasets.values():
 #     print(dataset)
