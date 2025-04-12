@@ -48,7 +48,7 @@ prompt = "Choose one from the following:\n 0 - recall,\n 1 - precision, \n 2 - F
 number_of_measure = int(input(prompt))
 measure = measures[number_of_measure]
 
-X_train, X_valid, y_train, y_valid = get_heart_data()
+X_train, X_valid, y_train, y_valid = get_synthetic_data()
 models = MultiLambdaLogRegCCD(start=-8, stop=5, num=500)
 models.fit(X_train, y_train)
 
