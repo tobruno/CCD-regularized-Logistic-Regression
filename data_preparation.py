@@ -64,15 +64,17 @@ def get_cancer_data():
     return X_train, X_test, y_train, y_test
 
 def get_wine_data():
-    data_wine = load_wine()
-    wine = pd.DataFrame(data_wine.data, columns=data_wine.feature_names)
-    wine['target'] = data_wine.target
-    wine = wine[wine.target != 2]
-
-    X_train, X_test, y_train, y_test = data_preprocessing(wine)
-    # values, counts = np.unique(y_test, return_counts=True)
-    # print(values, counts)
+    data = fetch_ucirepo(id=697)     
+    dropout = data.data.features 
+    target = data.data.targets
+    dropout['target'] = target
+    
+    dropout = dropout[dropout.target != 'Enrolled']
+    dropout.target = dropout.target.replace({'Graduate': 0, 'Dropout': 1})
+    #print(dropout.info())
+    X_train, X_test, y_train, y_test = data_preprocessing(dropout)
     return X_train, X_test, y_train, y_test
+
 
 def get_heart_data():
     data = fetch_ucirepo(id=45) 
@@ -81,7 +83,7 @@ def get_heart_data():
     heart_data['target'] = target
     heart_data.target = heart_data.target.replace({2: 1, 3: 1, 4: 1})
 
-    print(np.unique(heart_data.target, return_counts=True))
+    #print(np.unique(heart_data.target, return_counts=True))
 
     X_train, X_test, y_train, y_test = data_preprocessing(heart_data)
     return X_train, X_test, y_train, y_test

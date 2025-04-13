@@ -7,13 +7,19 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, log_loss, precision_score, recall_score, f1_score, balanced_accuracy_score, roc_auc_score, average_precision_score
 import pandas as pd
 
-from sklearn.metrics import (
-    roc_auc_score, average_precision_score, 
-    f1_score, balanced_accuracy_score
-)
 
-def evaluate_real_data():
-    X_train, X_test, y_train, y_test = get_heart_data()
+def evaluate_real_data(X_train, X_test, y_train, y_test ):
+    """
+    Generate and train models for comparison. The lambda in LogRegCCD is optimised by the balanced accuracy score.
+
+    Parameters:
+    -----------
+    X_train, X_test, y_train, y_test - training and validating sets and labels
+    
+    Returns:
+    --------
+    results by metrices, dataframe with coefficients
+    """
     results = {}
     feature_names = X_train.columns.tolist()
 
@@ -29,7 +35,12 @@ def evaluate_real_data():
     results['LR_BalAcc'] = balanced_accuracy_score(y_test, pred_lr)
 
     # LogRegCCD
-    ccd_lr = LogRegCCD()
+    models = MultiLambdaLogRegCCD(start=-8, stop=5, num=500)
+    models.fit(X_train, y_train)
+    scores = [model.validate(X_test, y_test, "balanced accuracy") for model in models.models]
+    # Best AUC ROC score model
+    max_score = np.argmax(scores)
+    ccd_lr = models.models[max_score]
     ccd_lr.fit(X_train.values, y_train.values)
     proba_ccd = ccd_lr.predict_proba(X_test.values)
     pred_ccd = (proba_ccd >= 0.5).astype(int)
@@ -50,26 +61,33 @@ def evaluate_real_data():
     return results, df_coefs
 
 
-results, df = evaluate_real_data()
-df.plot(x='Feature', kind='bar', figsize=(12,6))
-plt.title("Coefficient Comparison: LogisticRegression vs LogRegCCD")
-plt.ylabel("Coefficient Value")
-plt.xticks(rotation=45, ha='right')
-plt.tight_layout()
-plt.show()
+datasets = {'college': get_wine_data,'cancer':get_cancer_data, 'titanic':get_titanic_data, 'heart': get_heart_data}
+
+for name, dataset in datasets.items():
+    X_train, X_test, y_train, y_test = dataset()
+
+    results, df = evaluate_real_data(X_train, X_test, y_train, y_test)
+    df.plot(x='Feature', kind='bar', figsize=(12,6))
+    plt.title(f"Coefficient Comparison: LogisticRegression vs LogRegCCD - {name} dataset")
+    plt.ylabel("Coefficient Value")
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig(f'plots/task3_{name}_coefs.png')
+    plt.show()
 
 
-df = pd.DataFrame.from_dict(results, orient='index', columns=['Score'])
-df = df.reset_index()
-df[['Model', 'Metric']] = df['index'].str.extract(r'(LR|CCD)_(.*)')
-df_pivot = df.pivot(index='Metric', columns='Model', values='Score')
-df_pivot = df_pivot.loc[['ROC_AUC', 'PR_AUC', 'F1', 'BalAcc']]
+    df = pd.DataFrame.from_dict(results, orient='index', columns=['Score'])
+    df = df.reset_index()
+    df[['Model', 'Metric']] = df['index'].str.extract(r'(LR|CCD)_(.*)')
+    df_pivot = df.pivot(index='Metric', columns='Model', values='Score')
+    df_pivot = df_pivot.loc[['ROC_AUC', 'PR_AUC', 'F1', 'BalAcc']]
 
-df_pivot.plot(kind='bar', figsize=(10, 6))
-plt.title("Performance Comparison: LogisticRegression vs LogRegCCD")
-plt.ylabel("Score")
-plt.xticks(rotation=0)
-plt.ylim(0, 1.05)
-plt.grid(axis='y')
-plt.tight_layout()
-plt.show()
+    df_pivot.plot(kind='bar', figsize=(10, 6))
+    plt.title(f"Performance Comparison: LogisticRegression vs LogRegCCD - {name} dataset")
+    plt.ylabel("Score")
+    plt.xticks(rotation=0)
+    plt.ylim(0, 1.05)
+    plt.grid(axis='y')
+    plt.tight_layout()
+    plt.savefig(f'plots/task3_{name}_evaluation.png')
+    plt.show()

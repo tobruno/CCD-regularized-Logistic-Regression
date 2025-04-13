@@ -102,6 +102,7 @@ class LogRegCCD:
         plt.ylabel('Log-Loss')
         plt.title('Loss Convergence Over Iterations')
         plt.legend()
+        plt.savefig(f'plots/task2_loss.png')
         plt.show()
 
 class MultiLambdaLogRegCCD:
@@ -134,6 +135,7 @@ class MultiLambdaLogRegCCD:
         plt.title('Regularization path')
         plt.legend()
         plt.grid()
+        plt.savefig(f'plots/task2_coefs.png')
         plt.show()
 
     def plot(self, measure, X, y):
@@ -146,6 +148,7 @@ class MultiLambdaLogRegCCD:
         plt.xlabel('Regularization strength')
         plt.title(f"{measure} vs regularization strength")
         plt.grid()
+        plt.savefig(f'plots/task2_{measure}.png')
         plt.show()
 
     def plot_final_loss(self):
@@ -157,6 +160,7 @@ class MultiLambdaLogRegCCD:
         plt.xlabel('Regularization strength')
         plt.title('Final loss vs regularization strength')
         plt.grid()
+        plt.savefig(f'plots/task2_losses.png')
         plt.show()
 
 #datasets = {'wine': get_wine_data,'cancer':get_cancer_data, 'titanic':get_titanic_data, 'heart': get_heart_data, 'synthetic': get_synthetic_data}

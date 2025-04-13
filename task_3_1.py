@@ -84,6 +84,7 @@ def plot_results(df, param_name):
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
+    plt.savefig(f'plots/task3_synthetic_{param_name}_coefs.png')
     plt.show()
 
 df_n = run_param_sweep(vary='n')
