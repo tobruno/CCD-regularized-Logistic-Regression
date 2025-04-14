@@ -26,7 +26,7 @@ def evaluate_real_data(X_train, X_test, y_train, y_test ):
     feature_names = X_train.columns.tolist()
 
     # Logistic Regression
-    lr = LogisticRegression(penalty=None)
+    lr = LogisticRegression(penalty='l1', solver='liblinear')
     lr.fit(X_train, y_train)
     proba_lr = lr.predict_proba(X_test)[:, 1]
     pred_lr = (proba_lr >= 0.5).astype(int)
@@ -70,11 +70,11 @@ for name, dataset in datasets.items():
 
     results, df = evaluate_real_data(X_train, X_test, y_train, y_test)
     df.plot(x='Feature', kind='bar', figsize=(12,6))
-    plt.title(f"Coefficient Comparison: LogisticRegression vs LogRegCCD - {name} dataset")
+    plt.title(f"Coefficient Comparison: LogisticRegression(with L1) vs LogRegCCD - {name} dataset")
     plt.ylabel("Coefficient Value")
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
-    plt.savefig(f'plots/task3_{name}_coefs.png')
+    plt.savefig(f'plots/l1_comp_{name}_coefs.png')
     plt.show()
 
 
@@ -85,11 +85,11 @@ for name, dataset in datasets.items():
     df_pivot = df_pivot.loc[['ROC_AUC', 'PR_AUC', 'F1', 'BalAcc']]
 
     df_pivot.plot(kind='bar', figsize=(10, 6))
-    plt.title(f"Performance Comparison: LogisticRegression vs LogRegCCD - {name} dataset")
+    plt.title(f"Performance Comparison: LogisticRegression(with L1) vs LogRegCCD - {name} dataset")
     plt.ylabel("Score")
     plt.xticks(rotation=0)
     plt.ylim(0, 1.05)
     plt.grid(axis='y')
     plt.tight_layout()
-    plt.savefig(f'plots/task3_{name}_evaluation.png')
+    plt.savefig(f'plots/l1_comp_{name}_evaluation.png')
     plt.show()

@@ -2,16 +2,20 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, log_loss, precision_score, recall_score, f1_score, balanced_accuracy_score, roc_auc_score, average_precision_score
-from data_preparation import get_heart_data, get_cancer_data, get_synthetic_data, get_titanic_data, get_wine_data
+from data_preparation import get_heart_data, get_cancer_data, get_synthetic_data, get_titanic_data, get_college_dropout
+
+import os
+os.makedirs('plots', exist_ok=True)
 
 class LogRegCCD:
-    def __init__(self, alpha=1.0, max_iter=100, tol=1e-4):
-        self.alpha = alpha  # L1 Regularization strength
+    def __init__(self, lambda_param=1.0, max_iter=100, tol=1e-4):
+        self.lambda_param = lambda_param  # L1 Regularization strength
         self.max_iter = max_iter
         self.tol = tol  # Convergence threshold
         self.coef_ = None  # Model coefficients
         self.intercept_ = 0  # Bias term
         self.loss_history = []
+        self.coef_history = []  
 
     def sigmoid(self, z):
         z = np.clip(z, -25, 25)
@@ -53,10 +57,10 @@ class LogRegCCD:
                 gradient = np.dot(X[:, j], residual)  # Now X[:, j] is valid
             
                 # Soft-thresholding for L1 regularization
-                if gradient > self.alpha:
-                    self.coef_[j] = (gradient - self.alpha) / np.sum(X[:, j] ** 2)
-                elif gradient < -self.alpha:
-                    self.coef_[j] = (gradient + self.alpha) / np.sum(X[:, j] ** 2)
+                if gradient > self.lambda_param:
+                    self.coef_[j] = (gradient - self.lambda_param) / np.sum(X[:, j] ** 2)
+                elif gradient < -self.lambda_param:
+                    self.coef_[j] = (gradient + self.lambda_param) / np.sum(X[:, j] ** 2)
                 else:
                     self.coef_[j] = 0
             
@@ -66,6 +70,8 @@ class LogRegCCD:
             loss = log_loss(y, self.sigmoid(X @ self.coef_ + self.intercept_))
             self.loss_history.append(loss)
             
+            self.coef_history.append(self.coef_.copy())
+
             if np.linalg.norm(self.coef_ - prev_coef, ord=1) < self.tol:
                 break
 
@@ -96,19 +102,32 @@ class LogRegCCD:
 
         return measures[measure](y_valid, metric_input)
     
-    def plot_loss(self):
+    def plot_loss(self, filename='plots/loss_convergence.png'):
         plt.plot(self.loss_history, label='Loss Convergence')
         plt.xlabel('Iterations')
         plt.ylabel('Log-Loss')
         plt.title('Loss Convergence Over Iterations')
         plt.legend()
-        plt.savefig(f'plots/task2_loss.png')
-        plt.show()
+        plt.savefig(filename)
+
+    def plot_coef_history(self, filename='plots/coef_history.png'):
+        plt.figure(figsize=(12, 8))
+        
+                
+        for idx, coef in enumerate(self.coef_history):
+            plt.plot(coef, label=f'Coef {idx}')
+        
+        plt.xlabel('Iterations')
+        plt.ylabel('Coefficient Value')
+        plt.title('Coefficient values by iteration')
+        plt.grid(True)
+        plt.legend()
+        plt.savefig(filename)
 
 class MultiLambdaLogRegCCD:
     def __init__(self, start, stop, num, max_iter=100, tol=1e-4):
-        self.alphas = 10 ** np.linspace(start=start, stop=stop, num=num)
-        self.models = [LogRegCCD(alpha=alpha, tol=tol, max_iter=max_iter) for alpha in self.alphas]
+        self.lambdas = 10 ** np.linspace(start=start, stop=stop, num=num)
+        self.models = [LogRegCCD(lambda_param=lambda_value, tol=tol, max_iter=max_iter) for lambda_value in self.lambdas]
 
     def fit(self, X, y):
         for model in self.models:
@@ -126,9 +145,9 @@ class MultiLambdaLogRegCCD:
 
         plt.figure(figsize=(10, 6))
         for i, coef in enumerate(zip(*coefs)):
-            plt.plot(self.alphas, coef, label=f'Coefficient {i + 1}')
+            plt.plot(self.lambdas, coef, label=f'Coefficient {i + 1}')
 
-        plt.plot(self.alphas, intercepts, label='Intercept', linestyle='--', color='black')
+        plt.plot(self.lambdas, intercepts, label='Intercept', linestyle='--', color='black')
         plt.xscale('log')
         plt.xlabel('Regularization strength')
         plt.ylabel('Coefficient values')
@@ -143,7 +162,7 @@ class MultiLambdaLogRegCCD:
 
         plt.figure(figsize=(10, 6))
 
-        plt.plot(self.alphas, measure_vals, color='black')
+        plt.plot(self.lambdas, measure_vals, color='black')
         plt.xscale('log')
         plt.xlabel('Regularization strength')
         plt.title(f"{measure} vs regularization strength")
@@ -155,7 +174,7 @@ class MultiLambdaLogRegCCD:
         losses = [model.loss_history[-1] for model in self.models]
 
         plt.figure(figsize=(10, 6))
-        plt.plot(self.alphas, losses)
+        plt.plot(self.lambdas, losses)
         plt.xscale('log')
         plt.xlabel('Regularization strength')
         plt.title('Final loss vs regularization strength')

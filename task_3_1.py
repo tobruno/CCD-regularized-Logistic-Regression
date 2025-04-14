@@ -1,11 +1,14 @@
 from algorithm_implementation import LogRegCCD, MultiLambdaLogRegCCD
-from data_preparation import get_heart_data, get_wine_data, get_cancer_data, get_synthetic_data,  get_titanic_data
+from data_preparation import get_heart_data, get_college_dropout, get_cancer_data, get_synthetic_data,  get_titanic_data
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, log_loss, precision_score, recall_score, f1_score, balanced_accuracy_score, roc_auc_score, average_precision_score
 import pandas as pd
+
+import os
+os.makedirs('plots', exist_ok=True)
 
 
 n_vals = [100, 500, 1000, 5000]

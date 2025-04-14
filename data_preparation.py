@@ -63,7 +63,7 @@ def get_cancer_data():
     X_train, X_test, y_train, y_test = data_preprocessing(breast_cancer)
     return X_train, X_test, y_train, y_test
 
-def get_wine_data():
+def get_college_dropout():
     data = fetch_ucirepo(id=697)     
     dropout = data.data.features 
     target = data.data.targets

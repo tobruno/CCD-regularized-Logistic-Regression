@@ -1,5 +1,5 @@
 from algorithm_implementation import LogRegCCD, MultiLambdaLogRegCCD
-from data_preparation import get_heart_data, get_wine_data, get_cancer_data, get_synthetic_data,  get_titanic_data
+from data_preparation import get_heart_data, get_college_dropout, get_cancer_data, get_synthetic_data,  get_titanic_data
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LogisticRegression
